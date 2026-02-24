@@ -1,0 +1,15 @@
+# Core Dependencies
+# Server & API
+fastapi>=0.115.0
+uvicorn>=0.30.0
+websockets>=13.0
+
+# QR Code
+qrcode>=8.0
+Pillow>=11.0.0
+
+# Utilities
+python-dotenv>=1.0.0
+pydantic>=2.9.0
+loguru>=0.7.2
+aiohttp>=3.10.0

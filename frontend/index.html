@@ -1,0 +1,1873 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>IntervyoAI - Interview Copilot</title>
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #e2e8f0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 100%;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .header {
+            padding: 16px;
+            background: rgba(15, 23, 42, 0.95);
+            border-bottom: 1px solid rgba(99, 102, 241, 0.3);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            font-size: 20px;
+            font-weight: 700;
+            color: #818cf8;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #818cf8, #6366f1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ef4444;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-dot.connected {
+            background: #22c55e;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .main-content {
+            flex: 1;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            overflow-y: auto;
+        }
+        
+        .card {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+        }
+        
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #818cf8;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .transcription-box {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            min-height: 100px;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #e2e8f0;
+        }
+        
+        .transcription-box.listening {
+            border-color: #22c55e;
+            box-shadow: 0 0 20px rgba(34, 197, 94, 0.2);
+        }
+        
+        .answer-box {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(129, 140, 248, 0.3);
+            border-radius: 12px;
+            padding: 16px;
+            min-height: 150px;
+            font-size: 15px;
+            line-height: 1.7;
+            color: #c7d2fe;
+            white-space: pre-wrap;
+        }
+        
+        .answer-box.streaming {
+            border-color: #818cf8;
+        }
+        
+        .button {
+            background: linear-gradient(135deg, #6366f1, #818cf8);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+        }
+        
+        .button:active {
+            transform: translateY(0);
+        }
+        
+        .button.secondary {
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+        }
+        
+        .button.danger {
+            background: linear-gradient(135deg, #ef4444, #f87171);
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .input {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: #e2e8f0;
+            font-size: 14px;
+            width: 100%;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+        
+        .input:focus {
+            border-color: #818cf8;
+        }
+        
+        .input::placeholder {
+            color: #64748b;
+        }
+        
+        .select {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: #e2e8f0;
+            font-size: 14px;
+            width: 100%;
+            outline: none;
+            cursor: pointer;
+        }
+        
+        .select:focus {
+            border-color: #818cf8;
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .form-label {
+            font-size: 12px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+            padding-bottom: 8px;
+        }
+        
+        .tab {
+            padding: 8px 16px;
+            background: transparent;
+            border: none;
+            color: #64748b;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-radius: 6px;
+        }
+        
+        .tab:hover {
+            background: rgba(99, 102, 241, 0.1);
+            color: #818cf8;
+        }
+        
+        .tab.active {
+            background: rgba(99, 102, 241, 0.2);
+            color: #818cf8;
+        }
+        
+        .section {
+            display: none;
+        }
+        
+        .section.active {
+            display: block;
+        }
+        
+        .role-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 4px;
+        }
+        
+        .role-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .role-card:hover {
+            border-color: #818cf8;
+            background: rgba(99, 102, 241, 0.1);
+        }
+        
+        .role-card.selected {
+            border-color: #22c55e;
+            background: rgba(34, 197, 94, 0.1);
+        }
+        
+        .role-name {
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 4px;
+        }
+        
+        .role-category {
+            font-size: 12px;
+            color: #64748b;
+        }
+        
+        .qr-section {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .qr-code {
+            background: white;
+            padding: 16px;
+            border-radius: 12px;
+            display: inline-block;
+            margin: 16px 0;
+        }
+        
+        .qr-code img {
+            width: 200px;
+            height: 200px;
+        }
+        
+        .connection-url {
+            font-size: 14px;
+            color: #818cf8;
+            word-break: break-all;
+            background: rgba(15, 23, 42, 0.8);
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-top: 8px;
+        }
+        
+        .shortcut-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .shortcut-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 6px;
+        }
+        
+        .shortcut-key {
+            background: rgba(99, 102, 241, 0.3);
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: monospace;
+        }
+        
+        .toggle {
+            position: relative;
+            width: 48px;
+            height: 24px;
+            background: rgba(99, 102, 241, 0.3);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .toggle.active {
+            background: #22c55e;
+        }
+        
+        .toggle::after {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: all 0.3s;
+        }
+        
+        .toggle.active::after {
+            left: 26px;
+        }
+        
+        .settings-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(99, 102, 241, 0.1);
+        }
+        
+        .settings-label {
+            font-size: 14px;
+            color: #e2e8f0;
+        }
+        
+        .settings-desc {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .slider {
+            width: 120px;
+            height: 6px;
+            background: rgba(99, 102, 241, 0.3);
+            border-radius: 3px;
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #818cf8;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .slider-value {
+            font-size: 12px;
+            color: #818cf8;
+            min-width: 40px;
+        }
+        
+        @media (max-width: 768px) {
+            .header {
+                padding: 12px;
+            }
+            
+            .logo {
+                font-size: 16px;
+            }
+            
+            .main-content {
+                padding: 12px;
+            }
+            
+            .card {
+                padding: 16px;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            .button {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* Simplified UI Styles */
+        .quick-toolbar {
+            display: flex;
+            gap: 8px;
+            padding: 12px 16px;
+            background: rgba(15, 23, 42, 0.8);
+            border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        .toolbar-btn {
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: #818cf8;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .toolbar-btn:hover, .toolbar-btn.active {
+            background: rgba(99, 102, 241, 0.4);
+        }
+
+        .focus-view {
+            padding: 16px;
+        }
+
+        .focus-card {
+            margin-bottom: 12px;
+        }
+
+        .focus-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 12px 0;
+        }
+
+        .collapsible-panel {
+            padding: 0 16px 16px;
+        }
+
+        .panel-toggle {
+            width: 100%;
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            color: #818cf8;
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 8px;
+            transition: all 0.2s;
+        }
+
+        .panel-toggle:hover {
+            background: rgba(30, 41, 59, 0.8);
+        }
+
+        .toggle-icon {
+            font-size: 10px;
+            transition: transform 0.2s;
+        }
+
+        .panel-toggle.open .toggle-icon {
+            transform: rotate(180deg);
+        }
+
+        .panel-content {
+            display: none;
+            padding: 12px;
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid rgba(99, 102, 241, 0.1);
+            border-top: none;
+            border-radius: 0 0 8px 8px;
+            margin-top: -8px;
+        }
+
+        .panel-content.open {
+            display: block;
+        }
+
+        /* Focus Mode */
+        body.focus-mode .collapsible-panel,
+        body.focus-mode .quick-toolbar,
+        body.focus-mode .header {
+            display: none;
+        }
+
+        body.focus-mode .focus-view {
+            padding: 8px;
+        }
+
+        body.focus-mode .container {
+            min-height: auto;
+        }
+
+        body.focus-mode .header {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">🎯</div>
+                    <span>IntervyoAI</span>
+                </div>
+                <div class="status-indicator">
+                    <div class="status-dot" id="statusDot"></div>
+                    <span id="statusText">Connecting...</span>
+                </div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- Quick Toolbar -->
+            <div class="quick-toolbar">
+                <button class="toolbar-btn" id="focusModeBtn" title="Focus Mode (Ctrl+Shift+F)">🎯 Focus</button>
+                <button class="toolbar-btn" id="showOverlayBtn" title="Show Overlay (Ctrl+Shift+O)">📺 Overlay</button>
+                <button class="toolbar-btn" id="stealthBtn" title="Stealth Mode (Ctrl+Shift+H)">👻 Stealth</button>
+            </div>
+
+            <!-- Focus Mode - Main Interview View -->
+            <div class="focus-view" id="focusView">
+                <div class="card focus-card">
+                    <div class="card-title">🎤 Question</div>
+                    <div class="transcription-box" id="transcription">
+                        Waiting for question...
+                    </div>
+                </div>
+                <div class="card focus-card">
+                    <div class="card-title">💡 Answer</div>
+                    <div class="answer-box" id="answer">
+                        Your answer will appear here in real-time...
+                    </div>
+                </div>
+                <div class="focus-actions">
+                    <button class="button" id="startBtn">
+                        <span>🎤</span> Listen
+                    </button>
+                    <button class="button secondary" id="screenshotBtn">
+                        <span>📷</span> Screenshot
+                    </button>
+                    <button class="button secondary" id="testBtn">
+                        <span>🧪</span> Test
+                    </button>
+                    <button class="button danger" id="cancelBtn" style="display: none;">
+                        <span>⏹️</span> Cancel
+                    </button>
+                </div>
+            </div>
+
+            <!-- Collapsible Settings Panel -->
+            <div class="collapsible-panel" id="settingsPanel">
+                <button class="panel-toggle" onclick="togglePanel('configPanel')">
+                    <span>⚙️ Configuration</span>
+                    <span class="toggle-icon">▼</span>
+                </button>
+                <div class="panel-content" id="configPanel">
+                    <div class="grid">
+                        <div class="form-group">
+                            <label class="form-label">Role</label>
+                            <select class="select" id="roleSelect">
+                                <option value="software_engineer">Software Engineer</option>
+                                <option value="data_scientist">Data Scientist</option>
+                                <option value="devops_engineer">DevOps Engineer</option>
+                                <option value="product_manager">Product Manager</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">AI Provider</label>
+                            <select class="select" id="providerSelect">
+                                <option value="ollama">Ollama (Local)</option>
+                                <option value="deepseek">DeepSeek</option>
+                                <option value="huggingface">Hugging Face</option>
+                                <option value="glm">GLM (Zhipu AI)</option>
+                                <option value="claude">Claude</option>
+                                <option value="gemini">Gemini</option>
+                                <option value="grok">Grok</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="panel-toggle" onclick="togglePanel('promptPanel')">
+                    <span>💬 Custom Prompt</span>
+                    <span class="toggle-icon">▼</span>
+                </button>
+                <div class="panel-content" id="promptPanel">
+                    <textarea class="input" id="customPrompt" rows="2" placeholder="Enter custom prompt..."></textarea>
+                    <button class="button" id="runPromptBtn" style="margin-top: 8px;">Run</button>
+                    <div class="answer-box" id="promptResult" style="margin-top: 8px;"></div>
+                </div>
+
+                <button class="panel-toggle" onclick="togglePanel('screenshotPanel')">
+                    <span>🖼️ Screenshot</span>
+                    <span class="toggle-icon">▼</span>
+                </button>
+                <div class="panel-content" id="screenshotPanel">
+                    <button class="button" id="captureScreenForAnalysis">Capture Screen</button>
+                    <input type="text" class="input" id="screenshotQuestion" placeholder="What to ask?" style="margin-top: 8px;">
+                    <button class="button secondary" id="analyzeScreenshotBtn" style="margin-top: 8px;">Analyze</button>
+                    <div class="answer-box" id="screenshotAnalysis" style="margin-top: 8px;"></div>
+                </div>
+
+                <button class="panel-toggle" onclick="togglePanel('rolesPanel')">
+                    <span>💼 Job Roles</span>
+                    <span class="toggle-icon">▼</span>
+                </button>
+                <div class="panel-content" id="rolesPanel">
+                    <input type="text" class="input" id="roleSearch" placeholder="Search roles...">
+                    <div class="role-grid" id="roleGrid" style="margin-top: 8px;"></div>
+                </div>
+
+                <button class="panel-toggle" onclick="togglePanel('companyPanel')">
+                    <span>🏢 Company Research</span>
+                    <span class="toggle-icon">▼</span>
+                </button>
+                <div class="panel-content" id="companyPanel">
+                    <input type="text" class="input" id="companySearch" placeholder="Company name...">
+                    <button class="button" id="searchCompanyBtn" style="margin-top: 8px;">Search</button>
+                    <div id="companyResult" style="margin-top: 8px;"></div>
+                </div>
+
+                <button class="panel-toggle" onclick="togglePanel('connectPanel')">
+                    <span>📱 Connect / Shortcuts</span>
+                    <span class="toggle-icon">▼</span>
+                </button>
+                <div class="panel-content" id="connectPanel">
+                    <div class="shortcut-list">
+                        <div class="shortcut-item"><span>Toggle Overlay</span><span class="shortcut-key">Ctrl+Shift+O</span></div>
+                        <div class="shortcut-item"><span>Focus Mode</span><span class="shortcut-key">Ctrl+Shift+F</span></div>
+                        <div class="shortcut-item"><span>Stealth Mode</span><span class="shortcut-key">Ctrl+Shift+H</span></div>
+                        <div class="shortcut-item"><span>Voice Input</span><span class="shortcut-key">Ctrl+Shift+V</span></div>
+                        <div class="shortcut-item"><span>AI Answer</span><span class="shortcut-key">Ctrl+Shift+A</span></div>
+                        <div class="shortcut-item"><span>Screenshot</span><span class="shortcut-key">Ctrl+Shift+S</span></div>
+                    </div>
+                </div>
+
+                <button class="panel-toggle" onclick="togglePanel('appSettingsPanel')">
+                    <span>⚙️ App Settings</span>
+                    <span class="toggle-icon">▼</span>
+                </button>
+                <div class="panel-content" id="appSettingsPanel">
+                    <div class="settings-row">
+                        <div><div class="settings-label">Language</div></div>
+                        <select class="select" id="languageSelect" style="width: 150px;">
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-label">Stealth Mode</div></div>
+                        <div class="toggle" id="stealthToggle"></div>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-label">Always on Top</div></div>
+                        <div class="toggle active" id="alwaysOnTopToggle"></div>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-label">Auto-start</div></div>
+                        <div class="toggle" id="autoStartToggle"></div>
+                    </div>
+                    <div class="settings-row">
+                        <div><div class="settings-label">Overlay Opacity</div></div>
+                        <input type="range" class="slider" id="opacitySlider" min="0.3" max="1" step="0.05" value="0.85">
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center; padding: 12px; color: #64748b; font-size: 12px;">
+                v1.0.0 • Ctrl+Shift+F for Focus Mode
+            </div>
+
+            <!-- Prompt Section -->
+            <section class="section" id="prompt">
+                <div class="card">
+                    <div class="card-title">💬 Custom Prompt</div>
+                    <div class="form-group">
+                        <label class="form-label">Enter your custom prompt</label>
+                        <textarea class="input" id="customPrompt" rows="4" placeholder="Enter your custom prompt here... e.g., 'Tell me about your experience with Python'"></textarea>
+                    </div>
+                    <div class="form-group" style="margin-top: 12px;">
+                        <label class="form-label">Context (optional)</label>
+                        <textarea class="input" id="promptContext" rows="2" placeholder="Additional context for the AI..."></textarea>
+                    </div>
+                    <button class="button" id="runPromptBtn" style="margin-top: 12px;">
+                        <span>▶️</span> Run Prompt
+                    </button>
+                    <div class="answer-box" id="promptResult" style="margin-top: 16px;">
+                        Your response will appear here...
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">📋 Quick Prompts</div>
+                    <div class="button-group" style="grid-template-columns: repeat(2, 1fr);">
+                        <button class="button secondary" onclick="setQuickPrompt('Tell me about yourself')">
+                            Tell me about yourself
+                        </button>
+                        <button class="button secondary" onclick="setQuickPrompt('What are your strengths and weaknesses?')">
+                            Strengths & Weaknesses
+                        </button>
+                        <button class="button secondary" onclick="setQuickPrompt('Why should we hire you?')">
+                            Why hire you?
+                        </button>
+                        <button class="button secondary" onclick="setQuickPrompt('Where do you see yourself in 5 years?')">
+                            5 Year Vision
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Resume Section -->
+            <section class="section" id="resume">
+                <div class="card">
+                    <div class="card-title">📄 Resume Analyzer</div>
+                    <div class="form-group">
+                        <label class="form-label">Upload Resume (PDF, DOCX, or Image)</label>
+                        <input type="file" class="input" id="resumeUpload" accept=".pdf,.docx,.doc,.png,.jpg,.jpeg">
+                    </div>
+                    <div class="form-group" style="margin-top: 12px;">
+                        <label class="form-label">Or paste resume text</label>
+                        <textarea class="input" id="resumeText" rows="6" placeholder="Paste your resume text here..."></textarea>
+                    </div>
+                    <button class="button" id="analyzeResumeBtn" style="margin-top: 12px;">
+                        <span>🔍</span> Analyze Resume
+                    </button>
+                    <div class="answer-box" id="resumeAnalysis" style="margin-top: 16px;">
+                        Resume analysis will appear here...
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">📝 Cover Letter Analyzer</div>
+                    <div class="form-group">
+                        <label class="form-label">Or upload cover letter</label>
+                        <input type="file" class="input" id="coverLetterUpload" accept=".pdf,.docx,.doc,.txt">
+                    </div>
+                    <div class="form-group" style="margin-top: 12px;">
+                        <textarea class="input" id="coverLetterText" rows="6" placeholder="Paste your cover letter here..."></textarea>
+                    </div>
+                    <button class="button" id="analyzeCoverLetterBtn" style="margin-top: 12px;">
+                        <span>🔍</span> Analyze Cover Letter
+                    </button>
+                    <div class="answer-box" id="coverLetterAnalysis" style="margin-top: 16px;">
+                        Cover letter analysis will appear here...
+                    </div>
+                </div>
+            </section>
+
+            <!-- Screenshot Section -->
+            <section class="section" id="screenshot">
+                <div class="card">
+                    <div class="card-title">🖼️ Screenshot to Answer</div>
+                    <div class="form-group">
+                        <label class="form-label">Take a screenshot or upload image</label>
+                        <button class="button" id="captureScreenForAnalysis">
+                            <span>📸</span> Capture Screen
+                        </button>
+                        <input type="file" class="input" id="screenshotUpload" accept="image/*" style="margin-top: 12px;">
+                    </div>
+                    <div class="form-group" style="margin-top: 12px;">
+                        <label class="form-label">What would you like to know?</label>
+                        <input type="text" class="input" id="screenshotQuestion" placeholder="e.g., What does this code do? How should I answer this?">
+                    </div>
+                    <button class="button" id="analyzeScreenshotBtn" style="margin-top: 12px;">
+                        <span>🤖</span> Analyze & Answer
+                    </button>
+                    <div class="answer-box" id="screenshotAnalysis" style="margin-top: 16px;">
+                        Screenshot analysis will appear here...
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">⚡ Auto Screenshot Mode</div>
+                    <div class="settings-row">
+                        <div>
+                            <div class="settings-label">Enable Auto Capture</div>
+                            <div class="settings-desc">Automatically capture and analyze screenshots</div>
+                        </div>
+                        <div class="toggle" id="autoScreenshotToggle"></div>
+                    </div>
+                    <div class="form-group" style="margin-top: 16px;">
+                        <label class="form-label">Custom Auto Prompt</label>
+                        <input type="text" class="input" id="autoScreenshotPrompt" placeholder="e.g., What interview question is shown? How should I answer?">
+                    </div>
+                    <div class="form-group" style="margin-top: 12px;">
+                        <label class="form-label">Capture Interval (seconds)</label>
+                        <input type="range" class="slider" id="captureIntervalSlider" min="5" max="60" step="5" value="15">
+                        <span class="slider-value" id="captureIntervalValue">15s</span>
+                    </div>
+                    <div id="autoScreenshotStatus" style="margin-top: 12px; color: #64748b; font-size: 14px;">
+                        Auto screenshot mode is disabled
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-title">📸 Recent Screenshots</div>
+                    <div id="screenshotHistory" style="display: flex; flex-direction: column; gap: 8px;">
+                        <p style="color: #64748b;">No screenshots captured yet.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Roles Section -->
+            <section class="section" id="roles">
+                <div class="card">
+                    <div class="card-title">💼 Select Your Interview Role</div>
+                    <div class="form-group" style="margin-bottom: 16px;">
+                        <input type="text" class="input" id="roleSearch" placeholder="Search roles...">
+                    </div>
+                    <div class="role-grid" id="roleGrid">
+                        <!-- Roles will be loaded here -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Company Section -->
+            <section class="section" id="company">
+                <div class="card">
+                    <div class="card-title">🏢 Company Research</div>
+                    <div class="form-group">
+                        <input type="text" class="input" id="companySearch" placeholder="Enter company name (e.g., Google, Microsoft)">
+                    </div>
+                    <button class="button" id="searchCompanyBtn" style="margin-top: 12px;">
+                        <span>🔍</span> Research Company
+                    </button>
+                </div>
+
+                <div class="card" id="companyResult" style="display: none;">
+                    <div class="card-title" id="companyName">Company Name</div>
+                    <div id="companyInfo"></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">💡 Interview Tips</div>
+                    <div id="interviewTips">
+                        Search for a company to get personalized interview tips.
+                    </div>
+                </div>
+            </section>
+
+            <!-- Connect Section -->
+            <section class="section" id="connect">
+                <div class="card">
+                    <div class="card-title">📱 Connect via Phone</div>
+                    <div class="qr-section">
+                        <p>Scan QR code to open on your phone:</p>
+                        <div class="qr-code" id="qrCode">
+                            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect fill='%23fff' width='200' height='200'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23333'%3ELoading...%3C/text%3E%3C/svg%3E" alt="QR Code">
+                        </div>
+                        <div class="connection-url" id="connectionUrl">Loading...</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">⌨️ Keyboard Shortcuts</div>
+                    <div class="shortcut-list">
+                        <div class="shortcut-item">
+                            <span>Toggle Overlay</span>
+                            <span class="shortcut-key">Ctrl+Shift+O</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <span>Toggle Stealth Mode</span>
+                            <span class="shortcut-key">Ctrl+Shift+H</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <span>Focus Overlay</span>
+                            <span class="shortcut-key">Ctrl+Shift+I</span>
+                        </div>
+                        <div class="shortcut-item">
+                            <span>Capture Screenshot</span>
+                            <span class="shortcut-key">Ctrl+Shift+S</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Settings Section -->
+            <section class="section" id="settings">
+                <div class="card">
+                    <div class="card-title">⚙️ Application Settings</div>
+                    
+                    <div class="settings-row">
+                        <div>
+                            <div class="settings-label">Stealth Mode</div>
+                            <div class="settings-desc">Hide from taskbar, click-through overlay</div>
+                        </div>
+                        <div class="toggle" id="stealthToggle"></div>
+                    </div>
+
+                    <div class="settings-row">
+                        <div>
+                            <div class="settings-label">Always on Top</div>
+                            <div class="settings-desc">Keep overlay window above other windows</div>
+                        </div>
+                        <div class="toggle active" id="alwaysOnTopToggle"></div>
+                    </div>
+
+                    <div class="settings-row">
+                        <div>
+                            <div class="settings-label">Auto-start</div>
+                            <div class="settings-desc">Start IntervyoAI when computer starts</div>
+                        </div>
+                        <div class="toggle" id="autoStartToggle"></div>
+                    </div>
+
+                    <div class="settings-row">
+                        <div>
+                            <div class="settings-label">Minimize to Tray</div>
+                            <div class="settings-desc">Hide to system tray instead of closing</div>
+                        </div>
+                        <div class="toggle active" id="minimizeToTrayToggle"></div>
+                    </div>
+
+                    <div class="settings-row">
+                        <div>
+                            <div class="settings-label">Overlay Opacity</div>
+                        </div>
+                        <div class="slider-container">
+                            <input type="range" class="slider" id="opacitySlider" min="0.3" max="1" step="0.05" value="0.85">
+                            <span class="slider-value" id="opacityValue">85%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">🔧 AI Configuration</div>
+                    <div class="grid">
+                        <div class="form-group">
+                            <label class="form-label">Ollama URL</label>
+                            <input type="text" class="input" id="ollamaUrl" value="http://localhost:11434">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Ollama Model</label>
+                            <select class="select" id="ollamaModel">
+                                <option value="">Auto-detect</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">DeepSeek API Key</label>
+                            <input type="password" class="input" id="deepseekKey" placeholder="sk-...">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Claude API Key</label>
+                            <input type="password" class="input" id="claudeKey" placeholder="sk-ant-...">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Gemini API Key</label>
+                            <input type="password" class="input" id="geminiKey" placeholder="AIza...">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Grok API Key</label>
+                            <input type="password" class="input" id="grokKey" placeholder="xai-...">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Temperature</label>
+                            <input type="range" class="slider" id="temperatureSlider" min="0" max="1" step="0.1" value="0.7">
+                            <span class="slider-value" id="temperatureValue">0.7</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-title">ℹ️ About</div>
+                    <p style="color: #94a3b8; font-size: 14px;">
+                        IntervyoAI v1.0.0<br>
+                        100% Local • 100% Undetectable<br>
+                        Built with Tauri + Python
+                    </p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        // State
+        let ws = null;
+        let settings = {};
+        let currentRole = 'software_engineer';
+        let isListening = false;
+        let roles = [];
+        let focusMode = false;
+
+        // DOM Elements
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const transcription = document.getElementById('transcription');
+        const answer = document.getElementById('answer');
+        const startBtn = document.getElementById('startBtn');
+        const testBtn = document.getElementById('testBtn');
+        const screenshotBtn = document.getElementById('screenshotBtn');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const roleSelect = document.getElementById('roleSelect');
+        const providerSelect = document.getElementById('providerSelect');
+
+        // Toggle Panel Function
+        function togglePanel(panelId) {
+            const panel = document.getElementById(panelId);
+            const toggle = panel.previousElementSibling;
+            panel.classList.toggle('open');
+            toggle.classList.toggle('open');
+        }
+
+        // Toggle Focus Mode
+        function toggleFocusMode() {
+            focusMode = !focusMode;
+            document.body.classList.toggle('focus-mode', focusMode);
+            const focusBtn = document.getElementById('focusModeBtn');
+            if (focusBtn) focusBtn.classList.toggle('active', focusMode);
+            
+            if (window.electronAPI) {
+                window.electronAPI.setOverlayAlwaysOnTop(true);
+            }
+        }
+
+        // Initialize
+        async function init() {
+            await loadSettings();
+            await loadRoles();
+            await loadLanguages();
+            await loadConnectionInfo();
+            connectWebSocket();
+            setupEventListeners();
+            setupShortcutListeners();
+        }
+
+        // Load languages
+        async function loadLanguages() {
+            try {
+                const response = await fetch('/api/languages');
+                const data = await response.json();
+                if (data.languages) {
+                    const select = document.getElementById('languageSelect');
+                    select.innerHTML = data.languages.map(lang => 
+                        `<option value="${lang.code}">${lang.name}</option>`
+                    ).join('');
+                    if (data.current) {
+                        select.value = data.current;
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to load languages:', e);
+            }
+        }
+
+        // Language change handler
+        async function setLanguage(code) {
+            try {
+                await fetch('/api/languages/set', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+            } catch (e) {
+                console.error('Failed to set language:', e);
+            }
+        }
+
+        // Keyboard Shortcut Listeners (like Pluely, Cheating Daddy, Cluely)
+        function setupShortcutListeners() {
+            // Local keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                // Ctrl+Shift+F - Focus Mode
+                if (e.ctrlKey && e.shiftKey && e.key === 'F') {
+                    e.preventDefault();
+                    toggleFocusMode();
+                }
+                // Ctrl+Shift+O - Show Overlay
+                if (e.ctrlKey && e.shiftKey && e.key === 'O') {
+                    e.preventDefault();
+                    if (window.electronAPI?.toggleOverlay) {
+                        window.electronAPI.toggleOverlay();
+                    }
+                }
+                // Ctrl+Shift+H - Stealth Mode
+                if (e.ctrlKey && e.shiftKey && e.key === 'H') {
+                    e.preventDefault();
+                    toggleStealthModeUI();
+                }
+            });
+
+            if (!window.electronAPI) return;
+            
+            // Listen for shortcuts from main process
+            window.electronAPI.onShortcut((action) => {
+                console.log('Shortcut received:', action);
+                switch(action) {
+                    case 'toggle-overlay':
+                    case 'focus-overlay':
+                        if (window.electronAPI.toggleOverlay) {
+                            window.electronAPI.toggleOverlay();
+                        }
+                        break;
+                    case 'toggle-stealth':
+                    case 'full-stealth-on':
+                        toggleStealthModeUI();
+                        break;
+                    case 'full-stealth-off':
+                        toggleStealthModeUI();
+                        break;
+                    case 'capture-screenshot':
+                        captureScreenForAnalysis();
+                        break;
+                    case 'voice-input':
+                        toggleListening();
+                        break;
+                    case 'generate-answer':
+                        if (transcription.textContent && transcription.textContent !== 'Waiting for question...' && transcription.textContent !== 'Waiting...') {
+                            generateAnswer(transcription.textContent);
+                        }
+                        break;
+                }
+            });
+            
+            // Listen for screenshot captured via shortcut
+            window.electronAPI.onScreenshotCaptured((dataUrl) => {
+                currentScreenshotData = dataUrl.split(',')[1];
+                document.getElementById('screenshotAnalysis').textContent = 'Screenshot captured! Enter your question.';
+            });
+        }
+
+        function toggleStealthModeUI() {
+            const stealthToggle = document.getElementById('stealthToggle');
+            if (stealthToggle) {
+                stealthToggle.classList.toggle('active');
+            }
+        }
+
+        async function loadSettings() {
+            try {
+                const response = await fetch('/settings');
+                settings = await response.json();
+                applySettings();
+            } catch (e) {
+                console.error('Failed to load settings:', e);
+            }
+        }
+
+        function applySettings() {
+            document.getElementById('stealthToggle').classList.toggle('active', settings.stealthMode);
+            document.getElementById('alwaysOnTopToggle').classList.toggle('active', settings.overlayAlwaysOnTop);
+            document.getElementById('autoStartToggle').classList.toggle('active', settings.autoStart);
+            document.getElementById('minimizeToTrayToggle').classList.toggle('active', settings.minimizeToTray);
+            document.getElementById('opacitySlider').value = settings.overlayOpacity || 0.85;
+            document.getElementById('opacityValue').textContent = Math.round((settings.overlayOpacity || 0.85) * 100) + '%';
+        }
+
+        async function loadRoles() {
+            try {
+                const response = await fetch('/api/roles');
+                const data = await response.json();
+                roles = data.roles;
+                renderRoleGrid(roles);
+                
+                // Populate role select
+                roleSelect.innerHTML = roles.map(r => 
+                    `<option value="${r.id}">${r.name}</option>`
+                ).join('');
+            } catch (e) {
+                console.error('Failed to load roles:', e);
+            }
+        }
+
+        function renderRoleGrid(rolesToRender) {
+            const grid = document.getElementById('roleGrid');
+            grid.innerHTML = rolesToRender.map(role => `
+                <div class="role-card ${role.id === currentRole ? 'selected' : ''}" data-role="${role.id}">
+                    <div class="role-name">${role.name}</div>
+                    <div class="role-category">${role.category}</div>
+                </div>
+            `).join('');
+
+            // Add click handlers
+            grid.querySelectorAll('.role-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    currentRole = card.dataset.role;
+                    renderRoleGrid(roles);
+                    roleSelect.value = currentRole;
+                });
+            });
+        }
+
+        async function loadConnectionInfo() {
+            try {
+                const response = await fetch('/connect');
+                const data = await response.json();
+                document.getElementById('connectionUrl').textContent = data.url;
+                
+                // Load QR code
+                const qrResponse = await fetch('/qr');
+                const qrData = await qrResponse.json();
+                document.querySelector('#qrCode img').src = 'data:image/png;base64,' + qrData.qr_code;
+            } catch (e) {
+                console.error('Failed to load connection info:', e);
+            }
+        }
+
+        function connectWebSocket() {
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+
+            ws.onopen = () => {
+                statusDot.classList.add('connected');
+                statusText.textContent = 'Connected';
+            };
+
+            ws.onclose = () => {
+                statusDot.classList.remove('connected');
+                statusText.textContent = 'Disconnected';
+                setTimeout(connectWebSocket, 3000);
+            };
+
+            ws.onmessage = (event) => {
+                const message = JSON.parse(event.data);
+                handleMessage(message);
+            };
+        }
+
+        function handleMessage(message) {
+            switch (message.type) {
+                case 'transcription':
+                    transcription.textContent = message.data.text;
+                    transcription.classList.add('listening');
+                    setTimeout(() => transcription.classList.remove('listening'), 2000);
+                    break;
+                case 'answer':
+                    answer.textContent = message.data.text;
+                    answer.classList.add('streaming');
+                    if (message.data.is_complete) {
+                        answer.classList.remove('streaming');
+                    }
+                    break;
+                case 'token':
+                    answer.textContent += message.data.token;
+                    break;
+            }
+        }
+
+        function setupEventListeners() {
+            // Toolbar buttons
+            document.getElementById('focusModeBtn')?.addEventListener('click', toggleFocusMode);
+            document.getElementById('showOverlayBtn')?.addEventListener('click', () => {
+                if (window.electronAPI?.toggleOverlay) window.electronAPI.toggleOverlay();
+            });
+            document.getElementById('stealthBtn')?.addEventListener('click', toggleStealthModeUI);
+
+            // Language selector
+            document.getElementById('languageSelect')?.addEventListener('change', (e) => {
+                setLanguage(e.target.value);
+            });
+
+            // Action buttons
+            startBtn.addEventListener('click', toggleListening);
+            testBtn.addEventListener('click', testQuestion);
+            screenshotBtn.addEventListener('click', captureScreenshot);
+            cancelBtn.addEventListener('click', cancelGeneration);
+
+            // Role select
+            roleSelect.addEventListener('change', (e) => {
+                currentRole = e.target.value;
+                renderRoleGrid(roles);
+            });
+
+            // Role search
+            document.getElementById('roleSearch').addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                const filtered = roles.filter(r => 
+                    r.name.toLowerCase().includes(query) || 
+                    r.category.toLowerCase().includes(query)
+                );
+                renderRoleGrid(filtered);
+            });
+
+            // Company search
+            document.getElementById('searchCompanyBtn').addEventListener('click', searchCompany);
+            
+            // Prompt handlers
+            document.getElementById('runPromptBtn')?.addEventListener('click', runCustomPrompt);
+            
+            // Resume handlers
+            document.getElementById('analyzeResumeBtn')?.addEventListener('click', analyzeResume);
+            document.getElementById('analyzeCoverLetterBtn')?.addEventListener('click', analyzeCoverLetter);
+            
+            // Screenshot handlers
+            document.getElementById('captureScreenForAnalysis')?.addEventListener('click', captureScreenForAnalysis);
+            document.getElementById('analyzeScreenshotBtn')?.addEventListener('click', analyzeScreenshot);
+
+            // Auto Screenshot Mode
+            document.getElementById('autoScreenshotToggle')?.addEventListener('click', toggleAutoScreenshot);
+            document.getElementById('captureIntervalSlider')?.addEventListener('input', (e) => {
+                document.getElementById('captureIntervalValue').textContent = e.target.value + 's';
+            });
+
+            // Settings toggles
+            document.getElementById('stealthToggle').addEventListener('click', async () => {
+                await window.electronAPI.toggleStealthMode();
+            });
+
+            document.getElementById('alwaysOnTopToggle').addEventListener('click', async () => {
+                const toggle = document.getElementById('alwaysOnTopToggle');
+                const isOn = toggle.classList.toggle('active');
+                await window.electronAPI.setOverlayAlwaysOnTop(isOn);
+            });
+
+            document.getElementById('opacitySlider').addEventListener('input', async (e) => {
+                const value = parseFloat(e.target.value);
+                document.getElementById('opacityValue').textContent = Math.round(value * 100) + '%';
+                await window.electronAPI.setOverlayOpacity(value);
+            });
+
+            // Sliders
+            document.getElementById('temperatureSlider').addEventListener('input', (e) => {
+                document.getElementById('temperatureValue').textContent = e.target.value;
+            });
+        }
+
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let recognition = null;
+
+        async function toggleListening() {
+            if (!isListening) {
+                // Start listening
+                if (window.electronAPI && window.electronAPI.isElectron) {
+                    // Use Electron's audio capture
+                    try {
+                        const result = await window.electronAPI.startAudioCapture();
+                        if (result.success) {
+                            isListening = true;
+                            startBtn.innerHTML = '<span>⏹️</span> Stop Listening';
+                            startBtn.classList.add('danger');
+                            transcription.textContent = 'Listening... (Say something)';
+                        } else {
+                            alert('Failed to start audio: ' + result.error);
+                        }
+                    } catch (e) {
+                        alert('Audio error: ' + e.message);
+                    }
+                } else {
+                    // Use Web Speech API (browser fallback)
+                    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                        alert('Speech recognition not supported. Please use Electron app or Chrome browser.');
+                        return;
+                    }
+                    
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    recognition = new SpeechRecognition();
+                    recognition.continuous = true;
+                    recognition.interimResults = true;
+                    recognition.lang = 'en-US';
+                    
+                    recognition.onresult = (event) => {
+                        let finalTranscript = '';
+                        for (let i = event.resultIndex; i < event.results.length; i++) {
+                            const transcript = event.results[i][0].transcript;
+                            if (event.results[i].isFinal) {
+                                finalTranscript += transcript;
+                            }
+                        }
+                        if (finalTranscript) {
+                            transcription.textContent = finalTranscript;
+                            generateAnswer(finalTranscript);
+                        }
+                    };
+                    
+                    recognition.onerror = (event) => {
+                        console.error('Speech recognition error:', event.error);
+                        transcription.textContent = 'Error: ' + event.error;
+                    };
+                    
+                    recognition.onend = () => {
+                        if (isListening) {
+                            recognition.start();
+                        }
+                    };
+                    
+                    recognition.start();
+                    isListening = true;
+                    startBtn.innerHTML = '<span>⏹️</span> Stop Listening';
+                    startBtn.classList.add('danger');
+                    transcription.textContent = 'Listening... (Say something)';
+                }
+            } else {
+                // Stop listening
+                isListening = false;
+                startBtn.innerHTML = '<span>▶️</span> Start Listening';
+                startBtn.classList.remove('danger');
+                
+                if (recognition) {
+                    recognition.stop();
+                    recognition = null;
+                }
+                
+                if (window.electronAPI && window.electronAPI.stopAudioCapture) {
+                    window.electronAPI.stopAudioCapture();
+                }
+                
+                transcription.textContent = 'Stopped listening';
+            }
+        }
+
+        async function generateAnswer(question) {
+            if (!question.trim()) return;
+
+            // Create new abort controller for cancellation
+            currentAbortController = new AbortController();
+            const signal = currentAbortController.signal;
+
+            answer.textContent = 'Generating answer...';
+            answer.classList.add('streaming');
+            document.getElementById('cancelBtn').style.display = 'inline-flex';
+
+            const provider = document.getElementById('providerSelect')?.value || 'ollama';
+            const roleId = document.getElementById('roleSelect')?.value || 'software_engineer';
+            
+            try {
+                const response = await fetch('/api/generate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    signal: signal,
+                    body: JSON.stringify({
+                        question: question,
+                        provider: provider,
+                        role_id: roleId,
+                        config: { url: 'http://localhost:11434', model: 'llama3.1:latest' }
+                    })
+                });
+                const data = await response.json();
+                
+                if (data.error) {
+                    answer.textContent = 'Error: ' + data.error;
+                } else {
+                    answer.textContent = data.answer;
+                }
+            } catch (e) {
+                if (e.name === 'AbortError') {
+                    return; // Already handled by cancelGeneration
+                }
+                answer.textContent = 'Failed to generate answer: ' + e.message;
+            } finally {
+                document.getElementById('cancelBtn').style.display = 'none';
+                answer.classList.remove('streaming');
+                currentAbortController = null;
+            }
+        }
+
+        async function testQuestion() {
+            const question = prompt('Enter a test question:');
+            if (question) {
+                await fetch('/test/question', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question })
+                });
+                transcription.textContent = question;
+            }
+        }
+
+        async function captureScreenshot() {
+            if (!window.electronAPI) {
+                alert('Electron API not available. Please run in Electron app.');
+                return;
+            }
+            try {
+                const result = await window.electronAPI.captureScreen();
+                if (result.success) {
+                    alert('Screenshot captured! (Preview not displayed in this mode)');
+                } else {
+                    alert('Failed to capture: ' + result.error);
+                }
+            } catch (e) {
+                alert('Screenshot error: ' + e.message);
+            }
+        }
+
+        function clearAll() {
+            transcription.textContent = 'Waiting for question...';
+            answer.textContent = 'Your answer will appear here in real-time...';
+            cancelGeneration();
+        }
+
+        // Cancel AI generation
+        let currentAbortController = null;
+        function cancelGeneration() {
+            if (currentAbortController) {
+                currentAbortController.abort();
+                currentAbortController = null;
+                answer.textContent = 'Generation cancelled.';
+                document.getElementById('cancelBtn').style.display = 'none';
+                answer.classList.remove('streaming');
+            }
+        }
+
+        // Auto Screenshot Mode
+        let autoScreenshotInterval = null;
+        let autoScreenshotEnabled = false;
+        function toggleAutoScreenshot() {
+            const toggle = document.getElementById('autoScreenshotToggle');
+            const status = document.getElementById('autoScreenshotStatus');
+            const interval = parseInt(document.getElementById('captureIntervalSlider')?.value || 15) * 1000;
+
+            autoScreenshotEnabled = !autoScreenshotEnabled;
+            toggle.classList.toggle('active', autoScreenshotEnabled);
+
+            if (autoScreenshotEnabled) {
+                status.textContent = 'Auto screenshot mode enabled - capturing every ' + (interval/1000) + 's';
+                autoScreenshotInterval = setInterval(async () => {
+                    await autoCaptureScreenshot();
+                }, interval);
+            } else {
+                status.textContent = 'Auto screenshot mode is disabled';
+                if (autoScreenshotInterval) {
+                    clearInterval(autoScreenshotInterval);
+                    autoScreenshotInterval = null;
+                }
+            }
+        }
+
+        async function autoCaptureScreenshot() {
+            if (!window.electronAPI) return;
+
+            const prompt = document.getElementById('autoScreenshotPrompt')?.value || 'What interview question is shown? How should I answer?';
+
+            try {
+                const result = await window.electronAPI.captureScreen();
+                if (result.success) {
+                    const analysisBox = document.getElementById('screenshotAnalysis');
+                    analysisBox.textContent = 'Auto-capturing and analyzing...';
+
+                    // Analyze the screenshot
+                    const response = await fetch('/api/ocr/analyze', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            image: result.image,
+                            prompt: prompt,
+                            provider: document.getElementById('providerSelect')?.value || 'ollama'
+                        })
+                    });
+                    const data = await response.json();
+
+                    if (data.error) {
+                        analysisBox.textContent = 'Error: ' + data.error;
+                    } else {
+                        analysisBox.textContent = data.analysis;
+                    }
+                }
+            } catch (e) {
+                console.error('Auto screenshot error:', e);
+            }
+        }
+
+        // Prompt Functions
+        window.setQuickPrompt = function(prompt) {
+            document.getElementById('customPrompt').value = prompt;
+            document.getElementById('prompt').classList.add('active');
+            document.querySelector('[data-tab="prompt"]').click();
+        };
+
+        async function runCustomPrompt() {
+            const prompt = document.getElementById('customPrompt').value;
+            const context = document.getElementById('promptContext').value;
+            const resultBox = document.getElementById('promptResult');
+            
+            if (!prompt) {
+                alert('Please enter a prompt');
+                return;
+            }
+            
+            resultBox.textContent = 'Generating response...';
+            
+            try {
+                const response = await fetch('/api/prompt/custom', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        context: context,
+                        provider: document.getElementById('providerSelect')?.value || 'ollama'
+                    })
+                });
+                const data = await response.json();
+                
+                if (data.error) {
+                    resultBox.textContent = 'Error: ' + data.error;
+                } else {
+                    resultBox.textContent = data.response;
+                }
+            } catch (e) {
+                resultBox.textContent = 'Error: ' + e.message;
+            }
+        }
+
+        // Resume Functions
+        async function analyzeResume() {
+            const resumeText = document.getElementById('resumeText').value;
+            const resumeUpload = document.getElementById('resumeUpload').files[0];
+            const analysisBox = document.getElementById('resumeAnalysis');
+            
+            if (!resumeText && !resumeUpload) {
+                alert('Please enter resume text or upload a file');
+                return;
+            }
+            
+            analysisBox.textContent = 'Analyzing resume...';
+            
+            try {
+                let documentBase64 = resumeText;
+                if (resumeUpload) {
+                    documentBase64 = await fileToBase64(resumeUpload);
+                }
+                
+                const response = await fetch('/api/document/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        document: documentBase64,
+                        type: 'resume',
+                        provider: document.getElementById('providerSelect')?.value || 'ollama'
+                    })
+                });
+                const data = await response.json();
+                
+                if (data.error) {
+                    analysisBox.textContent = 'Error: ' + data.error;
+                } else {
+                    analysisBox.textContent = data.analysis;
+                }
+            } catch (e) {
+                analysisBox.textContent = 'Error: ' + e.message;
+            }
+        }
+
+        async function analyzeCoverLetter() {
+            const coverLetterText = document.getElementById('coverLetterText').value;
+            const coverLetterUpload = document.getElementById('coverLetterUpload').files[0];
+            const analysisBox = document.getElementById('coverLetterAnalysis');
+            
+            if (!coverLetterText && !coverLetterUpload) {
+                alert('Please enter cover letter text or upload a file');
+                return;
+            }
+            
+            analysisBox.textContent = 'Analyzing cover letter...';
+            
+            try {
+                let documentBase64 = coverLetterText;
+                if (coverLetterUpload) {
+                    documentBase64 = await fileToBase64(coverLetterUpload);
+                }
+                
+                const response = await fetch('/api/document/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        document: documentBase64,
+                        type: 'cover_letter',
+                        provider: document.getElementById('providerSelect')?.value || 'ollama'
+                    })
+                });
+                const data = await response.json();
+                
+                if (data.error) {
+                    analysisBox.textContent = 'Error: ' + data.error;
+                } else {
+                    analysisBox.textContent = data.analysis;
+                }
+            } catch (e) {
+                analysisBox.textContent = 'Error: ' + e.message;
+            }
+        }
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = error => reject(error);
+            });
+        }
+
+        // Screenshot Analysis Functions
+        let currentScreenshotData = null;
+
+        async function captureScreenForAnalysis() {
+            if (!window.electronAPI) {
+                alert('Electron API not available');
+                return;
+            }
+            
+            try {
+                const result = await window.electronAPI.captureScreen();
+                if (result.success) {
+                    currentScreenshotData = result.image.split(',')[1];
+                    document.getElementById('screenshotAnalysis').textContent = 'Screenshot captured! Now enter your question and click Analyze.';
+                } else {
+                    alert('Failed to capture: ' + result.error);
+                }
+            } catch (e) {
+                alert('Screenshot error: ' + e.message);
+            }
+        }
+
+        async function analyzeScreenshot() {
+            const question = document.getElementById('screenshotQuestion').value;
+            const screenshotUpload = document.getElementById('screenshotUpload').files[0];
+            const analysisBox = document.getElementById('screenshotAnalysis');
+            
+            if (!currentScreenshotData && !screenshotUpload) {
+                alert('Please capture a screenshot or upload an image first');
+                return;
+            }
+            
+            if (!question) {
+                alert('Please enter a question about the screenshot');
+                return;
+            }
+            
+            analysisBox.textContent = 'Analyzing screenshot...';
+            
+            try {
+                let imageBase64 = currentScreenshotData;
+                if (screenshotUpload) {
+                    imageBase64 = await fileToBase64(screenshotUpload);
+                }
+                
+                const response = await fetch('/api/ocr/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image: imageBase64,
+                        prompt: question,
+                        provider: document.getElementById('providerSelect')?.value || 'ollama'
+                    })
+                });
+                const data = await response.json();
+                
+                if (data.error) {
+                    analysisBox.textContent = 'Error: ' + data.error;
+                } else {
+                    analysisBox.textContent = data.analysis;
+                }
+            } catch (e) {
+                analysisBox.textContent = 'Error: ' + e.message;
+            }
+        }
+
+        async function searchCompany() {
+            const companyName = document.getElementById('companySearch').value;
+            if (!companyName) {
+                alert('Please enter a company name');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/company/search?q=${encodeURIComponent(companyName)}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                document.getElementById('companyResult').style.display = 'block';
+                document.getElementById('companyName').textContent = data.name;
+                
+                let infoHtml = '';
+                if (data.industry) infoHtml += `<p><strong>Industry:</strong> ${data.industry}</p>`;
+                if (data.description) infoHtml += `<p><strong>About:</strong> ${data.description}</p>`;
+                if (data.headquarters) infoHtml += `<p><strong>Headquarters:</strong> ${data.headquarters}</p>`;
+                
+                document.getElementById('companyInfo').innerHTML = infoHtml;
+
+                if (data.interview_tips && data.interview_tips.length > 0) {
+                    document.getElementById('interviewTips').innerHTML = data.interview_tips
+                        .map(tip => `<p>• ${tip}</p>`).join('');
+                }
+            } catch (e) {
+                alert('Search failed: ' + e.message);
+            }
+        }
+
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>

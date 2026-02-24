@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IntervyoAI</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: transparent;
+            color: #fff;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+        
+        .overlay {
+            background: rgba(15, 23, 42, 0.95);
+            border-radius: 12px;
+            padding: 14px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid rgba(100, 120, 255, 0.3);
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            -webkit-app-region: drag;
+            cursor: move;
+        }
+        
+        .logo { font-size: 12px; color: #818cf8; font-weight: 600; }
+        
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 9px;
+            color: #64748b;
+        }
+        
+        .status-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #22c55e;
+        }
+        
+        .status-dot.listening { background: #f59e0b; animation: pulse 0.3s infinite; }
+        .status-dot.thinking { background: #818cf8; animation: pulse 0.5s infinite; }
+        .status-dot.error { background: #ef4444; }
+        
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+        
+        .input-section {
+            background: rgba(30, 41, 59, 0.7);
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-bottom: 8px;
+            border-left: 3px solid #6366f1;
+        }
+        
+        .input-label {
+            font-size: 8px;
+            color: #6366f1;
+            text-transform: uppercase;
+            margin-bottom: 3px;
+        }
+        
+        .question-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: #e2e8f0;
+            font-size: 12px;
+            outline: none;
+            resize: none;
+            font-family: inherit;
+        }
+        
+        .output-section {
+            flex: 1;
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 6px;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 13px;
+            line-height: 1.4;
+        }
+        
+        .output-label {
+            font-size: 8px;
+            color: #22c55e;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        
+        .answer-text {
+            color: #c7d2fe;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        
+        .answer-text.typing::after {
+            content: '▋';
+            animation: blink 0.5s infinite;
+        }
+        
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        
+        .toolbar {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+            -webkit-app-region: no-drag;
+        }
+        
+        .toolbar-btn {
+            width: 28px;
+            height: 28px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            background: rgba(99, 102, 241, 0.3);
+            color: #a5b4fc;
+            transition: all 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .toolbar-btn:hover { background: rgba(99, 102, 241, 0.6); }
+        .toolbar-btn:active { transform: scale(0.95); }
+        .toolbar-btn.active { background: #22c55e; color: #fff; }
+        .toolbar-btn.error { background: #ef4444; color: #fff; }
+        
+        ::-webkit-scrollbar { width: 3px; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 2px; }
+    </style>
+</head>
+<body>
+    <div class="overlay">
+        <div class="header">
+            <span class="logo">IntervyoAI</span>
+            <div class="status">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Ready</span>
+            </div>
+        </div>
+        
+        <div class="input-section">
+            <div class="input-label">Question</div>
+            <textarea class="question-input" id="questionInput" placeholder="Type or press V for voice..." rows="2"></textarea>
+        </div>
+        
+        <div class="output-section">
+            <div class="output-label">Answer</div>
+            <div class="answer-text" id="answerText">Waiting...</div>
+        </div>
+        
+        <div class="toolbar">
+            <button class="toolbar-btn" id="micBtn" title="Voice (V)">🎤</button>
+            <button class="toolbar-btn" id="captureBtn" title="Screenshot (S)">📷</button>
+            <button class="toolbar-btn" id="aiBtn" title="Generate (A)">🤖</button>
+            <button class="toolbar-btn" id="clearBtn" title="Clear (C)">🗑️</button>
+        </div>
+    </div>
+
+    <script>
+        const questionInput = document.getElementById('questionInput');
+        const answerText = document.getElementById('answerText');
+        const statusDot = document.getElementById('statusDot');
+        const statusText = document.getElementById('statusText');
+        const micBtn = document.getElementById('micBtn');
+        
+        let isListening = false;
+        let recognition = null;
+        let ws = null;
+        let wsConnected = false;
+        
+        const API_URL = `http://localhost:8080`;
+        
+        // === WEBSOCKET FOR REAL-TIME ===
+        function connectWS() {
+            try {
+                ws = new WebSocket(`ws://${window.location.host}/ws`);
+                
+                ws.onopen = () => {
+                    wsConnected = true;
+                    console.log('WS connected');
+                };
+                
+                ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.type === 'token' || data.type === 'answer') {
+                            const token = data.data?.text || data.data?.token || data.data || '';
+                            if (token) {
+                                answerText.textContent += token;
+                            }
+                        } else if (data.type === 'status') {
+                            setStatus(data.data?.status || 'Ready', data.data?.listening ? 'listening' : 'ready');
+                        }
+                    } catch (e) {}
+                };
+                
+                ws.onclose = () => {
+                    wsConnected = false;
+                    setTimeout(connectWS, 2000);
+                };
+                
+                ws.onerror = () => {
+                    wsConnected = false;
+                };
+            } catch (e) {
+                setTimeout(connectWS, 2000);
+            }
+        }
+        
+        connectWS();
+        
+        function setStatus(text, type = 'ready') {
+            statusText.textContent = text;
+            statusDot.className = 'status-dot ' + type;
+        }
+        
+        // === VOICE - Use Web Speech API ===
+        function toggleVoice() {
+            if (!isListening) startListening();
+            else stopListening();
+        }
+        
+        function startListening() {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) {
+                answerText.textContent = 'Voice not supported. Use Chrome/Edge.';
+                return;
+            }
+            
+            try {
+                recognition = new SR();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                
+                recognition.onresult = (e) => {
+                    const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
+                    questionInput.value = transcript;
+                };
+                
+                recognition.onerror = (e) => {
+                    console.error('Voice error:', e.error);
+                    if (e.error === 'not-allowed') {
+                        answerText.textContent = 'Mic denied. Allow mic in browser.';
+                    }
+                    stopListening();
+                };
+                
+                recognition.start();
+                isListening = true;
+                micBtn.classList.add('active');
+                setStatus('Listening', 'listening');
+            } catch (e) {
+                answerText.textContent = 'Voice error: ' + e.message;
+            }
+        }
+        
+        function stopListening() {
+            if (recognition) { try { recognition.stop(); } catch(e) {} recognition = null; }
+            isListening = false;
+            micBtn.classList.remove('active');
+            setStatus('Ready', 'ready');
+            if (questionInput.value.trim()) generateAnswer();
+        }
+        
+        // === SCREENSHOT - Direct Electron API ===
+        async function captureScreen() {
+            setStatus('Capturing...', 'thinking');
+            captureBtn.classList.add('error');
+            
+            try {
+                // Use Electron API directly - fastest
+                if (window.electronAPI?.captureScreen) {
+                    const result = await window.electronAPI.captureScreen();
+                    if (result.success && result.image) {
+                        questionInput.value = '📷';
+                        await analyzeImage(result.image);
+                        captureBtn.classList.remove('error');
+                        return;
+                    }
+                }
+                
+                // Fallback to backend
+                const resp = await fetch(`${API_URL}/api/screenshot/capture`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ mode: 'fullscreen' })
+                });
+                
+                const data = await resp.json();
+                if (data.success && data.image) {
+                    questionInput.value = '📷';
+                    await analyzeImage(data.image);
+                } else {
+                    throw new Error(data.error || 'Capture failed');
+                }
+            } catch (e) {
+                answerText.textContent = 'Screenshot error: ' + e.message;
+                setStatus('Error', 'error');
+            }
+            captureBtn.classList.remove('error');
+        }
+        
+        async function analyzeImage(imageData) {
+            setStatus('Analyzing...', 'thinking');
+            answerText.textContent = '';
+            answerText.classList.add('typing');
+            
+            try {
+                const resp = await fetch(`${API_URL}/api/ocr/analyze`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        image: imageData,
+                        prompt: 'What is shown? Answer concisely.',
+                        provider: 'ollama'
+                    })
+                });
+                
+                const data = await resp.json();
+                answerText.classList.remove('typing');
+                answerText.textContent = data.analysis || data.error || 'No response';
+            } catch (e) {
+                answerText.classList.remove('typing');
+                answerText.textContent = 'Error: ' + e.message;
+            }
+            setStatus('Ready', 'ready');
+        }
+        
+        // === AI GENERATE - Streaming ===
+        async function generateAnswer() {
+            const question = questionInput.value.trim();
+            if (!question || question === '📷') return;
+            
+            setStatus('Thinking...', 'thinking');
+            answerText.textContent = '';
+            answerText.classList.add('typing');
+            
+            try {
+                const resp = await fetch(`${API_URL}/api/generate/stream`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        question: question,
+                        provider: 'ollama',
+                        stream: true
+                    })
+                });
+                
+                if (!resp.ok) throw new Error('API error');
+                
+                const reader = resp.body.getReader();
+                const decoder = new TextDecoder();
+                
+                answerText.classList.remove('typing');
+                
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    const chunk = decoder.decode(value);
+                    answerText.textContent += chunk;
+                }
+            } catch (e) {
+                answerText.classList.remove('typing');
+                // Try non-streaming
+                try {
+                    const resp = await fetch(`${API_URL}/api/generate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ question, provider: 'ollama' })
+                    });
+                    const data = await resp.json();
+                    answerText.textContent = data.answer || data.error || e.message;
+                } catch (e2) {
+                    answerText.textContent = 'Error: ' + e.message;
+                }
+            }
+            setStatus('Ready', 'ready');
+        }
+        
+        // === EVENT LISTENERS ===
+        micBtn.addEventListener('click', toggleVoice);
+        document.getElementById('captureBtn').addEventListener('click', captureScreen);
+        document.getElementById('aiBtn').addEventListener('click', generateAnswer);
+        document.getElementById('clearBtn').addEventListener('click', () => {
+            questionInput.value = '';
+            answerText.textContent = 'Waiting...';
+        });
+        
+        // Keyboard shortcuts - instant response
+        document.addEventListener('keydown', (e) => {
+            // Don't intercept if typing
+            if (document.activeElement === questionInput) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    generateAnswer();
+                }
+                return;
+            }
+            
+            // Instant actions
+            if (e.key.toLowerCase() === 'v') toggleVoice();
+            if (e.key.toLowerCase() === 's') captureScreen();
+            if (e.key.toLowerCase() === 'a') generateAnswer();
+            if (e.key.toLowerCase() === 'c') { questionInput.value = ''; answerText.textContent = 'Waiting...'; }
+        });
+        
+        questionInput.focus();
+    </script>
+</body>
+</html>
